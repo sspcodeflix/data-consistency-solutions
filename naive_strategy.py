@@ -1,5 +1,4 @@
 import threading
-
 class DataStore:
     """
     Simple key-value store with multiple replicas storing the same data.
@@ -11,20 +10,19 @@ class DataStore:
         """
         self._kv_dict = kv_dict if kv_dict else {}
         self.lock = threading.Lock()
-
     @property
     def kv_dict(self):
         """
         Get the key-value dictionary.
         """
         return self._kv_dict
-
+    
     def get_data(self, key):
-        """
-        Retrieve the value associated with the given key.
-        """
-        with self.lock:
-            return self.kv_dict.get(key)
+            """
+            Retrieve the value associated with the given key.
+            """
+            with self.lock:
+                return self.kv_dict.get(key)
 
     def set_data(self, key, value):
         """
@@ -34,15 +32,15 @@ class DataStore:
             self.kv_dict[key] = value
 
     def add(self, key, value):
-        """
-        Add the specified value to the existing value for the given key.
-        """
-        with self.lock:
-            if key in self.kv_dict:
-                self.kv_dict[key] += value
-            else:
-                self.kv_dict[key] = value
-    
+            """
+            Add the specified value to the existing value for the given key.
+            """
+            with self.lock:
+                if key in self.kv_dict:
+                    self.kv_dict[key] += value
+                else:
+                    self.kv_dict[key] = value
+        
     def multiply(self, key, value):
         """
         Multiply the existing value for the given key by the specified value.
@@ -52,7 +50,7 @@ class DataStore:
                 self.kv_dict[key] *= value
             else:
                 self.kv_dict[key] = 0
-    
+
     def receive_event(self, key, value):
         """
         Update the value for the given key based on an event from another replica.
@@ -61,7 +59,7 @@ class DataStore:
 
 def replicate_data(store_from, store_to, key):
     """
-    Replicate data from one store to another for the given key.
+    Replicate data from one store(node) to another for the given key.
     """
     value = store_from.get_data(key)
     store_to.receive_event(key, value)
@@ -70,27 +68,27 @@ def run_correct_scenario():
     """
     Run the scenario without overlap.
     """
-    s1 = DataStore({'x': 5})
-    s2 = DataStore({'x': 5})
+    node_a = DataStore({'account_balance': 1000})
+    node_b = DataStore({'account_balance': 1000})
 
-    s1.add('x', 2)
-    replicate_data(s1, s2, 'x')
-    s2.multiply('x', 3)
-    replicate_data(s2, s1, 'x')
+    node_a.add('account_balance', 100)
+    replicate_data(node_a, node_b, 'account_balance')
+    node_b.multiply('account_balance', 50)
+    replicate_data(node_b, node_a, 'account_balance')
 
-    s1_value = s1.get_data('x')
-    s2_value = s2.get_data('x')
-    print(f'Correct Run: Value of x in s1 = {s1_value}, and in s2 = {s2_value}')
+    node_a_value = node_a.get_data('account_balance')
+    node_b_value = node_b.get_data('account_balance')
+    print(f'Correct Run: Value of account_balance in node_a = {node_a_value}, and in node_b = {node_b_value}')
 
 def run_incorrect_scenario():
     """
     Run the scenario with overlap to demonstrate concurrency issues.
     """
-    s1 = DataStore({'x': 5})
-    s2 = DataStore({'x': 5})
+    node_a = DataStore({'account_balance': 1000})
+    node_b = DataStore({'account_balance': 1000})
 
-    thread1 = threading.Thread(target=s1.add, args=('x', 2))
-    thread2 = threading.Thread(target=s2.multiply, args=('x', 3))
+    thread1 = threading.Thread(target=node_a.add, args=('account_balance', 100))
+    thread2 = threading.Thread(target=node_b.multiply, args=('account_balance', 50))
 
     thread1.start()
     thread2.start()
@@ -98,12 +96,12 @@ def run_incorrect_scenario():
     thread1.join()
     thread2.join()
 
-    replicate_data(s1, s2, 'x')
-    replicate_data(s2, s1, 'x')
+    replicate_data(node_a, node_b, 'account_balance')
+    replicate_data(node_b, node_a, 'account_balance')
 
-    s1_value = s1.get_data('x')
-    s2_value = s2.get_data('x')
-    print(f'Incorrect Run: Value of x in s1 = {s1_value}, and in s2 = {s2_value}')
+    node_a_value = node_a.get_data('account_balance')
+    node_b_value = node_b.get_data('account_balance')
+    print(f'Incorrect Run: Value of account_balance in node_a = {node_a_value}, and in node_b = {node_b_value}')
 
 if __name__ == "__main__":
     run_correct_scenario()
